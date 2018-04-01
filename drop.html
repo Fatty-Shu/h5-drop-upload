@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 	<meta charset="UTF-8">
-	<title>drop test</title>
+	<title>drop upload</title>
 	<style>
 		.drop-area{
 			margin:auto;
@@ -15,24 +15,35 @@
 <body>
 	<div class="drop-area"  ondrop="drop_hander(event)" ondragover = "dragover_hander(event)"></div>
 	<script>
-		let html = [];
+
+		/* 拖动到放置区域时 */
+		function dragover_hander (event) {
+			/* 必须同时阻止dragover和drop的默认事件
+			   否则会响应浏览器默认行为
+			   浏览器器能显示的文件会直接显示，例如html文件、图片文件
+			   浏览器器不能显示的文件会出现文件下载弹窗
+			*/
+			event.preventDefault(); 
+		}
+		
+		/*拖放完成事件*/
 		function drop_hander (event) {
 
-		    event.preventDefault();
+		    event.preventDefault(); //阻止默认事件
 
-		    var files = event.dataTransfer.files;
-		    var formData = new FormData();
+		    var files = event.dataTransfer.files; //通过dataTransfer对象获取文件对象数组
+		    var formData = new FormData(); //声明一个FormData实例
+
 		    for(var i = 0, len = files.length; i < len; i++) {
-		        formData.append('file',  files[i])
+		    	//使用append方法添加文件到file键
+		        formData.append('file',  files[i]);
 		    }
-		    var request = new XMLHttpRequest();
-			request.open("POST", "/process_post");
-			request.send(formData);
+
+		    var request = new XMLHttpRequest(); //创建XHR实例
+			request.open('POST', '/process_post'); //初始化请求
+			request.send(formData);//发送请求
 		}
 
-		function dragover_hander (event) {
-			event.preventDefault();
-		}
 	</script>
 </body>
 </html>

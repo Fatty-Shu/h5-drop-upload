@@ -1,50 +1,35 @@
-const express = require('express');
-const app = express();
-const multer = require('multer');
-const storage = multer.diskStorage({
-    destination: (req, file, cb)=>{
-        cb(null, 'uploads/')
-    },
-    filename: (req, file, cb)=>{
-        let fileNameArr = file.originalname.split(/\./);
-        cb(null, fileNameArr.slice(0,-1).join('.') + '.' + Date.now() + '.' + fileNameArr.splice(-1,1));
-    }
-});
-const upload = multer({ dest: 'uploads/' });
- 
-app.use(express.static('public'));
+const express = require('express'); //引入express模块
+const app = express(); //创建一个express应用
+const multer = require('multer'); // 引入multer模块
 
+/*
+ 新建一个multer中间件，设置文件保存路径
+ 路径必须存在，否则会报错
+*/
+const upload = multer({ dest: 'uploads/' }); 
 
+/* 请求/drop.html，返回文件 */
 app.get('/drop.html', function (req, res) {
    res.sendFile( __dirname + "/" + "drop.html" );
 })
- 
+
+/* 
+创建提交接口
+使用中间件处理
+upload.array('file')表示上传一个名为file文件数组
+ */
 app.post('/process_post', upload.array('file'), function (req, res,next) {
  
- console.log(req.body)
-   // 输出 JSON 格式
- // 没有附带文件
-  if (!req.files) {
+  if (!req.files) { // 末上传文件的返回
     res.json({ ok: false });
     return;
   }
-
-  // 输出文件信息
-  for(let i=0,len=req.files.length;i<len;i++){
-      console.log('====================================================');
-      console.log('fieldname: ' + req.files[i].fieldname);
-      console.log('originalname: ' + req.files[i].originalname);
-      console.log('encoding: ' + req.files[i].encoding);
-      console.log('mimetype: ' + req.files[i].mimetype);
-      console.log('size: ' + (req.files[i].size / 1024).toFixed(2) + 'KB');
-      console.log('destination: ' + req.files[i].destination);
-      console.log('filename: ' + req.files[i].filename);
-      console.log('path: ' + req.files[i].path);
-    }
+  //有上传文件,返回文件列表
   res.json(req.files)
   return;
 })
- 
+
+//启动服务，监听8081端口
 var server = app.listen(8081, function () {
  
   var host = server.address().address
