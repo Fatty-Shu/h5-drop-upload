@@ -18,9 +18,7 @@
 		let html = [];
 		function drop_hander (event) {
 
-			//event.stopPropagation();
 		    event.preventDefault();
-
 
 		    var files = event.dataTransfer.files;
 		    var formData = new FormData();
@@ -31,11 +29,10 @@
 			request.open("POST", "/process_post");
 			request.send(formData);
 		}
+
 		function dragover_hander (event) {
 			event.preventDefault();
 		}
-
-
 	</script>
 </body>
 </html>
