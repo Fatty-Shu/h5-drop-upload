@@ -10,12 +10,106 @@
 			height: 500px;
 			border:1px pink dashed;
 		}
+		.close-btn{
+			cursor: pointer;
+		}
+		.close-btn:after{
+			float: right;
+			content: 'X';
+			color: red;
+		}
+		#fileList{
+			width: 95%;
+		}
+		.process-bar{
+		    position: relative;
+		    margin: 0 10px 0 10px;
+		    width: 198px;
+		    height: 18px;
+		    display: none;
+		    text-align: center;
+		    line-height: 20px;
+		    color: #6dbfff;
+		    border-radius: 3px;
+		    border: 1px solid #1483d8;    
+		    background: #fff;
+		}
+		.success .process-bar,
+		.uploading .process-bar{
+			display: inline-block;
+		}
+		.process-bar .process-text{
+			position: relative;
+			z-index: 1;
+		}
+		.process-bar .process-rate{
+   			position: absolute;
+			width: 0;
+    		height: 100%;
+   			left: 0;
+  			top: 0;
+  			border-radius: 3px;
+    		background: #1483d8;
+		}
+		.file-list .success .process-text,
+		.file-list .success .close-btn:after,
+		.file-list .error .process-text,
+		.file-list .error .close-btn:after{
+			display: none;
+		}
+		 .success .process-bar :after,
+		.error .process-bar :after{
+			content:'success';
+			position: absolute;    
+			margin: auto;
+    		left: 0;
+    		right: 0;
+			z-index: 2;
+		}
+		.error .process-bar:after{
+			content: "error";
+			color: red;
+		}
 	</style>
 </head>
 <body>
 	<div class="drop-area"  ondrop="drop_hander(event)" ondragover = "dragover_hander(event)"></div>
+	<div id="fileList" class="file-list"></div>
+	<button id="submit">上传</button>
 	<script>
 
+		let filesSet = [];
+		let fileList = document.getElementById('fileList');
+		let frag = document.createDocumentFragment();
+		let barDom = createProccessBar();
+		let submit = document.getElementById("submit")
+
+		fileList.addEventListener('click', (evt)=>{
+			let index = evt.target.getAttribute('index')
+			if (index) {
+				if (filesSet[index].unloading && filesSet[index].req) {
+					filesSet[index].req.abort();
+					filesSet[index].unloading = false;		
+				} else {
+					filesSet[index].element.remove()
+					delete filesSet[index]	
+				}
+
+			}
+		})
+
+		submit.addEventListener('click',function(){
+			for(let key in filesSet){
+				if (filesSet[key].unloading || filesSet[key].uploaded) return; 
+				filesSet[key].unloading = true
+				initUpload(filesSet[key]).then(file => {
+					file.element.className = "success";
+					file.uploaded = true;
+				}).catch((file, err) => {
+					file.element.className = "error";
+				})
+			}
+		})
 		/* 拖动到放置区域时 */
 		function dragover_hander (event) {
 			/* 必须同时阻止dragover和drop的默认事件
@@ -32,17 +126,81 @@
 		    event.preventDefault(); //阻止默认事件
 
 		    var files = event.dataTransfer.files; //通过dataTransfer对象获取文件对象数组
-		    var formData = new FormData(); //声明一个FormData实例
+		    //var formData = new FormData(); //声明一个FormData实例
 
-		    for(var i = 0, len = files.length; i < len; i++) {
+		    for(let file of files) {
 		    	//使用append方法添加文件到file键
-		        formData.append('file',  files[i]);
+		       // formData.append('file',  files[i]);
+		       for(let key in file){
+		       	console.log(key, file[key], file.slice(1))
+		       }
+		       file.element = createFileDom(file, filesSet.length)
+		       file.processBar = filesSet.length?barDom.cloneNode(true):barDom;
+		       file.element.appendChild(file.processBar);
+		       filesSet.push(file);
+		       frag.appendChild(file.element);
 		    }
-
-		    var request = new XMLHttpRequest(); //创建XHR实例
-			request.open('POST', '/process_post'); //初始化请求
-			request.send(formData);//发送请求
+		    fileList.appendChild(frag)
+		    //var request = new XMLHttpRequest(); //创建XHR实例
+			//request.open('POST', '/process_post'); //初始化请求
+			//request.send(formData);//发送请求
 		}
+		function initUpload(file){
+
+			return new Promise((res, rej) => {
+				let formData = new FormData();
+				let req = new XMLHttpRequest();
+				let reta = file.processBar.querySelector('.process-rate');
+				let text = file.processBar.querySelector('.process-text');
+				let pre;
+				req.upload.onprogress =function(data){ 
+					pre = (data.loaded/data.total*100).toFixed(2)
+					reta.style.width = pre +'%';
+					text.innerText = pre +'%' ;
+				}
+				req.onreadystatechange = function () {
+					if (req.readyState !==4 ) return ; 
+					if (req.status === 200 ){
+						res(file, req)
+					} else {
+						rej(file, req)
+					}
+				}
+				formData.append('file',file);
+				req.open('POST', '/process_post');
+				req.send(formData);
+				file.req = req;
+				file.element.className = "uploading"				
+			})
+
+
+		}
+		function createFileDom (file,index) {
+			let p = document.createElement('p')
+			let text = document.createTextNode(file.name)
+			let span = document.createElement("span")
+			span.setAttribute('index', index)
+			span.className = 'close-btn'
+			p.appendChild(text)
+			p.appendChild(span)
+
+			return p;
+		}
+
+		function createProccessBar() {
+			let bar =  document.createElement("span");
+			let rate = document.createElement("span");
+			let text = document.createElement("span");
+			bar.className = "process-bar";
+			rate.className = "process-rate";
+			text.className = "process-text";
+			text.innerText="0%";
+			bar.appendChild(text);
+			bar.appendChild(rate);
+			return bar;
+		}
+
+
 
 	</script>
 </body>
